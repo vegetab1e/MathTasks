@@ -138,10 +138,11 @@ void mul(const double* A, const double* b, double* x, int n) noexcept
     if (!A || !b || !x || !n)
         return;
 
+#ifdef NDEBUG
     omp_set_dynamic(0);
     omp_set_num_threads(NUM_THREADS);
-
 #pragma omp parallel for num_threads(NUM_THREADS)
+#endif
     for (int i = 0; i < n; ++i)
     {
         const double* row = &A[i * n];
