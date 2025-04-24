@@ -83,7 +83,7 @@ rcMulU(const double* row, const double* end, const double* col, double* x)
 
 }
 
-namespace OptimizedAlgorithms
+inline namespace OptimizedAlgorithms
 {
 
 void mul(const double* A, const double* b, double* x, int n)

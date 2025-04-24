@@ -107,7 +107,7 @@ vXor32(__m256i const* &p, int n) noexcept
 
 }
 
-namespace OptimizedAlgorithms
+inline namespace OptimizedAlgorithms
 {
 
 char my_xor(const char* p, int n) noexcept
