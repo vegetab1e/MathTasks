@@ -122,9 +122,9 @@ void mul(const double* A, const double* b, double* x, int n)
                    b,
                    x + i);
 #ifdef DIAGNOSTIC_MODE
-    std::cout << "Number of threads: "
+    std::cout << "\x1b[36mNumber of threads: \x1b[1m"
               << trueBits(threads)
-              << "\n";
+              << "\x1b[0m\n";
 #endif
 }
 
