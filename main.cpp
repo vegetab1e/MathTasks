@@ -37,7 +37,7 @@ void runTest1()
     // остатка байт с тем, что получилось после XORа восьмёрок,
     // даст именно такой результат. В описании функции тоже про
     // это есть. Лично для меня - просто и понятно, но кому как
-    alignas(16) std::uint8_t bytes[getByteCount(120'000U, 3U)];
+    alignas(32) std::uint8_t bytes[getByteCount(120'000U, 3U)];
 
     fillByteArray(bytes);
 
@@ -49,7 +49,7 @@ void runTest1()
 
 void runTest1Ex(std::size_t array_size)
 {
-    std::uint8_t* bytes = static_cast<std::uint8_t*>(_mm_malloc(array_size, 16U));
+    std::uint8_t* bytes = static_cast<std::uint8_t*>(_mm_malloc(array_size, 32U));
 
     fillByteArrayEx(bytes, array_size);
 
@@ -117,10 +117,10 @@ catch (const std::exception& e)
 void runTest4Ex(std::size_t vector_length)
 {
     const std::size_t byte_count = vector_length * sizeof(double);
-    double* A  = static_cast<double*>(_mm_malloc(byte_count * vector_length, 32));
-    double* b  = static_cast<double*>(_mm_malloc(byte_count, 32));
-    double* x0 = static_cast<double*>(_mm_malloc(byte_count, 32));
-    double* x1 = static_cast<double*>(_mm_malloc(byte_count, 32));
+    double* A  = static_cast<double*>(_mm_malloc(byte_count * vector_length, 32U));
+    double* b  = static_cast<double*>(_mm_malloc(byte_count, 32U));
+    double* x0 = static_cast<double*>(_mm_malloc(byte_count, 32U));
+    double* x1 = static_cast<double*>(_mm_malloc(byte_count, 32U));
 
     if (!A || !b || !x0 || !x1)
     {
