@@ -142,8 +142,8 @@ void runTest4Ex(std::size_t vector_length)
     
     if (error_count)
     {
-        std::cout << "Несовпадает \x1b[1m" << error_count
-                  << "\x1b[0m значений из \x1b[1m" << vector_length
+        std::cout << "Несовпадает \x1b[1;31m" << error_count
+                  << "\x1b[0m значений из \x1b[1;31m" << vector_length
                   << "\x1b[0m!\n";
 
         printVector(x0, vector_length);
