@@ -2,10 +2,13 @@
 
 #include <string>
 #include <iostream>
+
+#include <type_traits>
+
 #if __cplusplus >= 201703L
 #include <numeric>
 #else
-// Метод для нахождения НОД,
+// Функция для нахождения НОД,
 // реализует алгоритм Евклида
 template<class T>
 auto gcd(T a, T b)
@@ -20,8 +23,6 @@ auto gcd(T a, T b)
     return a;
 }
 #endif
-
-#include <type_traits>
 
 template<class T, class U>
 constexpr
