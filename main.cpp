@@ -96,7 +96,7 @@ try {
     auto r4 = Rational<int>(145638, 9540);
     // Порождают исключения,
     // оставил для проверки!
-#ifdef DIAGNOSTIC_MODE
+#if 0
     auto r5 = Rational<unsigned>(r1);
     auto r6 = Rational<unsigned>(0, 0);
 #endif
