@@ -61,7 +61,7 @@ void runTest1Ex(std::size_t array_size)
 
     if (byte0 != byte1)
     {
-        std::cout << "\x1b[1;31m Несовпадают байты!\x1b[0m\n";
+        std::cout << "\x1b[1;31mНесовпадают байты!\x1b[0m\n";
 
         printBytes(byte0);
         printBytes(byte1);
@@ -124,7 +124,7 @@ void runTest4Ex(std::size_t vector_length)
 
     if (!A || !b || !x0 || !x1)
     {
-        std::cerr << "\x1b[1;31m Ошибка выделения памяти!\x1b[0m\n";
+        std::cerr << "\x1b[1;31mОшибка выделения памяти!\x1b[0m\n";
         return;
     }
 
