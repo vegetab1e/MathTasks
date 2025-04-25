@@ -93,6 +93,7 @@ void mul(const double* A, const double* b, double* x, int n)
 
     if (!A || !b || !x || !n)
         return;
+
 #ifdef NDEBUG
     omp_set_dynamic(0);
     omp_set_num_threads(NUM_THREADS);

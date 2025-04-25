@@ -28,22 +28,6 @@ vXor16A(__m128i* buffer,
 }
 
 inline void
-vXor32A(__m256i* buffer,
-        __m256i const* &p,
-        __m256i const* end) noexcept
-{
-    __m256i vector = _mm256_load_si256(p++);
-
-    do
-    {
-        vector = _mm256_xor_si256(vector, _mm256_load_si256(p));
-    }
-    while (++p < end);
-
-    _mm256_store_si256(buffer, vector);
-}
-
-inline void
 vXor16U(__m128i* buffer,
       __m128i const* &p,
       __m128i const* end) noexcept
@@ -57,6 +41,22 @@ vXor16U(__m128i* buffer,
     while (++p < end);
 
     _mm_store_si128(buffer, vector);
+}
+
+inline void
+vXor32A(__m256i* buffer,
+        __m256i const* &p,
+        __m256i const* end) noexcept
+{
+    __m256i vector = _mm256_load_si256(p++);
+
+    do
+    {
+        vector = _mm256_xor_si256(vector, _mm256_load_si256(p));
+    }
+    while (++p < end);
+
+    _mm256_store_si256(buffer, vector);
 }
 
 inline void
