@@ -19,10 +19,15 @@ const int NUM_THREADS = 1;
 const int NUM_THREADS = omp_get_num_procs();
 #endif
 
-inline void
+#ifdef __GNUC__
+inline __attribute__((always_inline))
+#else
+__forceinline
+#endif
+void
 vXor16A(__m128i* buffer,
-      __m128i const* p,
-      __m128i const* end) noexcept
+        __m128i const* p,
+        __m128i const* end) noexcept
 {
     __m128i vector = _mm_load_si128(p++);
 
@@ -35,10 +40,15 @@ vXor16A(__m128i* buffer,
     _mm_store_si128(buffer, vector);
 }
 
-inline void
+#ifdef __GNUC__
+inline __attribute__((always_inline))
+#else
+__forceinline
+#endif
+void
 vXor16U(__m128i* buffer,
-      __m128i const* p,
-      __m128i const* end) noexcept
+        __m128i const* p,
+        __m128i const* end) noexcept
 {
     __m128i vector = _mm_loadu_si128(p++);
 
@@ -51,7 +61,12 @@ vXor16U(__m128i* buffer,
     _mm_store_si128(buffer, vector);
 }
 
-inline void
+#ifdef __GNUC__
+inline __attribute__((always_inline))
+#else
+__forceinline
+#endif
+void
 vXor32A(__m256i* buffer,
         __m256i const* p,
         __m256i const* end) noexcept
@@ -67,7 +82,12 @@ vXor32A(__m256i* buffer,
     _mm256_store_si256(buffer, vector);
 }
 
-inline void
+#ifdef __GNUC__
+inline __attribute__((always_inline))
+#else
+__forceinline
+#endif
+void
 vXor32U(__m256i* buffer,
         __m256i const* p,
         __m256i const* end) noexcept
@@ -83,7 +103,12 @@ vXor32U(__m256i* buffer,
     _mm256_store_si256(buffer, vector);
 }
 
-inline std::uint8_t
+#ifdef __GNUC__
+inline __attribute__((always_inline))
+#else
+__forceinline
+#endif
+std::uint8_t
 vXor16(__m128i const* p, int n) noexcept
 {
     alignas(__m128i) std::uint8_t buffer[sizeof(__m128i)];
@@ -99,7 +124,12 @@ vXor16(__m128i const* p, int n) noexcept
     return *buffer ^ *(buffer + 1);
 }
 
-inline std::uint8_t
+#ifdef __GNUC__
+inline __attribute__((always_inline))
+#else
+__forceinline
+#endif
+std::uint8_t
 vXor32(__m256i const* p, int n) noexcept
 {
     alignas(__m256i) std::uint8_t buffer[sizeof(__m256i)];
