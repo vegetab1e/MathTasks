@@ -13,7 +13,7 @@ inline namespace OptimizedAlgorithms
  * @param[in] n Размер массива
  * @return Свёрнутый XORом в один байт массив
  */
-char my_xor(const char* p, int n) noexcept;
+char my_xor(const char* p, int n, bool force_sse2 = false) noexcept;
 
 }
 

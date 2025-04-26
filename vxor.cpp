@@ -103,6 +103,9 @@ vXor32U(__m256i* buffer,
     _mm256_store_si256(buffer, vector);
 }
 
+//
+// SSE2
+//
 #ifdef __GNUC__
 inline __attribute__((always_inline))
 #else
@@ -124,6 +127,9 @@ vXor(__m128i const* p, int n) noexcept
     return *buffer ^ *(buffer + 1);
 }
 
+//
+// AVX2
+//
 #ifdef __GNUC__
 inline __attribute__((always_inline))
 #else
@@ -181,7 +187,7 @@ vXor(const char* &p, int n)
 inline namespace OptimizedAlgorithms
 {
 
-char my_xor(const char* p, int n) noexcept
+char my_xor(const char* p, int n, bool force_sse2) noexcept
 {
     if (!p || !n)
         return 0b0;
@@ -196,11 +202,11 @@ char my_xor(const char* p, int n) noexcept
 #endif
 
     char const* end = p + n;
-    char byte = (n >= 2 * sizeof(__m256i)
-                 ? vXor<__m256i>(p, n)
-                 : (n >= 2 * sizeof(__m128i)
-                    ? vXor<__m128i>(p, n)
-                    : *p++));
+    char byte = ((n >= 2 * sizeof(__m256i)) && not force_sse2
+                  ? vXor<__m256i>(p, n)
+                  : (n >= 2 * sizeof(__m128i)
+                     ? vXor<__m128i>(p, n)
+                     : *p++));
 
     while (p < end)
         byte ^= *p++;
