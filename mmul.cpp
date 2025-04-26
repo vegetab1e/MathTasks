@@ -19,14 +19,14 @@ namespace
 constexpr std::size_t CHUNK_SIZE = sizeof(__m256d) / sizeof(double);
 const int NUM_THREADS = omp_get_num_procs();
 #ifdef DIAGNOSTIC_MODE
-unsigned threads = 0;
+unsigned threads_map;
 #endif
 inline void
 rcMulA(const double* row, const double* end, const double* col, double* x)
 {
 #ifdef DIAGNOSTIC_MODE
 #pragma omp atomic update
-    threads |= (1 << omp_get_thread_num());
+    threads_map |= (1 << omp_get_thread_num());
 #endif
     while (row <= end - CHUNK_SIZE)
     {
@@ -56,7 +56,7 @@ rcMulU(const double* row, const double* end, const double* col, double* x)
 {
 #ifdef DIAGNOSTIC_MODE
 #pragma omp atomic update
-    threads |= (1 << omp_get_thread_num());
+    threads_map |= (1 << omp_get_thread_num());
 #endif
     while (row <= end - CHUNK_SIZE)
     {
@@ -101,7 +101,7 @@ void mul(const double* A, const double* b, double* x, int n)
 
 #ifdef DIAGNOSTIC_MODE
 #pragma omp atomic write
-    threads = 0;
+    threads_map = 0b0;
 #endif
     if ((reinterpret_cast<std::uintptr_t>(A) & 0b11111) == 0 &&
         (reinterpret_cast<std::uintptr_t>(b) & 0b11111) == 0)
@@ -120,7 +120,7 @@ void mul(const double* A, const double* b, double* x, int n)
                    x + i);
 #ifdef DIAGNOSTIC_MODE
     std::cout << "\x1b[36mNumber of threads: \x1b[1m"
-              << trueBits(threads)
+              << trueBits(threads_map)
               << "\x1b[0m\n";
 #endif
 }
