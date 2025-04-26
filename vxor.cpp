@@ -100,9 +100,13 @@ vXor32(__m256i const* &p, int n) noexcept
     else
         vXor32U(reinterpret_cast<__m256i*>(buffer), p, p + n);
 
-    auto pointer = reinterpret_cast<__m128i const*>(buffer);
+    *reinterpret_cast<std::uint64_t*>(buffer) ^= *(reinterpret_cast<std::uint64_t*>(buffer) + 1) ^
+                                                 *(reinterpret_cast<std::uint64_t*>(buffer) + 2) ^
+                                                 *(reinterpret_cast<std::uint64_t*>(buffer) + 3);
+    *reinterpret_cast<std::uint32_t*>(buffer) ^= *(reinterpret_cast<std::uint32_t*>(buffer) + 1);
+    *reinterpret_cast<std::uint16_t*>(buffer) ^= *(reinterpret_cast<std::uint16_t*>(buffer) + 1);
 
-    return vXor16(pointer, 2);
+    return *buffer ^ *(buffer + 1);
 }
 
 }
