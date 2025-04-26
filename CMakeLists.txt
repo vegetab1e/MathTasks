@@ -10,6 +10,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -mavx2 -m64 -Ofast -flto")
 set(CMAKE_BUILD_TYPE Release)
 
 add_compile_definitions(DIAGNOSTIC_MODE)
+add_compile_definitions(BENCHMARK_MODE)
 
 add_executable(tests main.cpp
     utils.h

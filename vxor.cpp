@@ -7,11 +7,17 @@
 #include <emmintrin.h>
 
 #include "vxor.h"
+#ifdef BENCHMARK_MODE
+#include "utils.h"
+#endif
 
 namespace
 {
-
+#ifdef BENCHMARK_MODE
+const int NUM_THREADS = 1;
+#else
 const int NUM_THREADS = omp_get_num_procs();
+#endif
 
 inline void
 vXor16A(__m128i* buffer,
@@ -127,13 +133,19 @@ char my_xor(const char* p, int n) noexcept
     omp_set_dynamic(0);
     omp_set_num_threads(NUM_THREADS);
 
+#ifdef BENCHMARK_MODE
+    uint64_t tsc;
+    unsigned aux;
+    tsc = __rdtscp(&aux);
+#endif
+
     if (n >= 2 * sizeof(__m256i))
     {
         const int chunk = (n /= sizeof(__m256i)) / NUM_THREADS;
 #pragma omp parallel if (chunk > 1) num_threads(NUM_THREADS) reduction(^:byte)
         if (omp_in_parallel())
         {
-#ifdef DIAGNOSTIC_MODE
+#if defined(DIAGNOSTIC_MODE) && !defined(BENCHMARK_MODE)
 #pragma omp single
             std::cout << "\x1b[36mNumber of threads: \x1b[1m"
                       << omp_get_num_threads()
@@ -159,6 +171,13 @@ char my_xor(const char* p, int n) noexcept
     while (p < end)
         byte ^= *p++;
 
+#ifdef BENCHMARK_MODE
+    tsc = __rdtscp(&aux) - tsc;
+    std::cout << "\x1b[4mПриблизительное\x1b[0m количество тактов на "
+                 "\x1b[1mXOR с векторизацией:  \x1b[32m"
+              << tsc << "\x1b[0m\n";
+#endif
+
     return byte;
 }
 
@@ -177,9 +196,22 @@ char my_xor(const char* p, int n) noexcept
     omp_set_dynamic(0);
     omp_set_num_threads(NUM_THREADS);
 
+#ifdef BENCHMARK_MODE
+    uint64_t tsc;
+    unsigned aux;
+    tsc = __rdtscp(&aux);
+#endif
+
 #pragma omp parallel for num_threads(NUM_THREADS) reduction(^:byte)
     for (int i = 0; i < n; ++i)
         byte ^= p[i];
+
+#ifdef BENCHMARK_MODE
+    tsc = __rdtscp(&aux) - tsc;
+    std::cout << "\x1b[4mПриблизительное\x1b[0m количество тактов на "
+                 "\x1b[1mXOR без векторизации: \x1b[32m"
+              << tsc << "\x1b[0m\n";
+#endif
 
     return byte;
 }

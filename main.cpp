@@ -171,6 +171,10 @@ int main(int argc, char** argv)
     runTest2();
     runTest3();
 
+#ifdef BENCHMARK_MODE
+    checkRdtscp();
+#endif
+
     std::srand(static_cast<unsigned>(__rdtsc()));
     for (std::size_t i = 0; i < OPERATION_COUNT; ++i)
     {

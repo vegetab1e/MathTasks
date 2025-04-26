@@ -16,6 +16,7 @@
 #include <intrin.h>
 #define CHAR_SIZE CHAR_BIT 
 #elif defined(__GNUC__)
+#include <cpuid.h>
 #include <cxxabi.h>
 #include <x86intrin.h>
 #define CHAR_SIZE __CHAR_BIT__
@@ -178,6 +179,32 @@ printPolynom(const T* coefficients, std::size_t degree, T x, T value)
     std::cout << "\x1b[0m при \x1b[1mx = " << x
               << "\x1b[0m равно \x1b[1m" << value
               << "\x1b[0m\n";
+}
+
+inline
+bool checkRdtscp()
+{
+#if defined (__GNUC__)
+    unsigned cpu_id[4];
+    __get_cpuid(0x80000001,
+                &cpu_id[0],
+                &cpu_id[1],
+                &cpu_id[2],
+                &cpu_id[3]);
+#elif defined(_MSC_VER)
+    int cpu_id[4];
+    __cpuid(cpu_id, 0x80000001);
+#else
+#error Failing compilation
+#endif
+    if (cpu_id[3] & (1 << 27))
+    {
+        std::cout << "\x1b[1;33mRDTSCP is supported\x1b[0m\n";
+        return true;
+    }
+
+    std::cout << "\x1b[1;31mRDTSCP is not supported\x1b[0m\n";
+    return false;
 }
 
 #undef CHAR_SIZE
