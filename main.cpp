@@ -21,7 +21,7 @@ constexpr double TOLERANCE = 0.0001;
 
 constexpr std::size_t OPERATION_COUNT = 100U;
 constexpr std::size_t VECTOR_LENGTH = 1'000U;
-constexpr std::size_t ARRAY_SIZE = 500'000U;
+constexpr std::size_t ARRAY_SIZE = 10'000'000U;
 
 void runTest1()
 {

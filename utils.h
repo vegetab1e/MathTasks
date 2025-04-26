@@ -86,7 +86,7 @@ fillVector(T* vector, std::size_t N)
     std::srand(static_cast<unsigned>(__rdtsc()));
 
     for (std::size_t i = 0; i < N; ++i)
-        vector[i] = (std::rand() % 1000) * 3.14159;
+        vector[i] = (std::rand() % 100 + 1) * 2.718281828459045;
 }
 
 template<std::size_t N, class T>
