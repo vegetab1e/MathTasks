@@ -171,11 +171,11 @@ char my_xor(const char* p, int n) noexcept
         return 0b0;
 
     char byte = 0b0;
-#ifdef NDEBUG
+
     omp_set_dynamic(0);
     omp_set_num_threads(NUM_THREADS);
+
 #pragma omp parallel for num_threads(NUM_THREADS) reduction(^:byte)
-#endif
     for (int i = 0; i < n; ++i)
         byte ^= p[i];
 

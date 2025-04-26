@@ -94,29 +94,25 @@ void mul(const double* A, const double* b, double* x, int n)
     if (!A || !b || !x || !n)
         return;
 
-#ifdef NDEBUG
     omp_set_dynamic(0);
     omp_set_num_threads(NUM_THREADS);
-#endif
+
     std::memset(x, 0, n * sizeof(*x));
+
 #ifdef DIAGNOSTIC_MODE
 #pragma omp atomic write
     threads = 0;
 #endif
     if ((reinterpret_cast<std::uintptr_t>(A) & 0b11111) == 0 &&
         (reinterpret_cast<std::uintptr_t>(b) & 0b11111) == 0)
-#ifdef NDEBUG
 #pragma omp parallel for num_threads(NUM_THREADS)
-#endif
         for (int i = 0; i < n; ++i)
             rcMulA(A + i * n,
                    A + (i + 1) * n,
                    b,
                    x + i);
     else
-#ifdef NDEBUG
 #pragma omp parallel for num_threads(NUM_THREADS)
-#endif
         for (int i = 0; i < n; ++i)
             rcMulU(A + i * n,
                    A + (i + 1) * n,
@@ -139,11 +135,10 @@ void mul(const double* A, const double* b, double* x, int n) noexcept
     if (!A || !b || !x || !n)
         return;
 
-#ifdef NDEBUG
     omp_set_dynamic(0);
     omp_set_num_threads(NUM_THREADS);
+
 #pragma omp parallel for num_threads(NUM_THREADS)
-#endif
     for (int i = 0; i < n; ++i)
     {
         const double* row = &A[i * n];
