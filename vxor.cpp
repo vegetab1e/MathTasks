@@ -187,7 +187,7 @@ vXor(const char* &p, int n)
 inline namespace OptimizedAlgorithms
 {
 
-char my_xor(const char* p, int n, bool force_sse2) noexcept
+char my_xor(const char* p, int n, bool force_sse2)
 {
     if (!p || !n)
         return 0b0;
@@ -226,7 +226,7 @@ char my_xor(const char* p, int n, bool force_sse2) noexcept
 namespace ReferenceAlgorithms
 {
 
-char my_xor(const char* p, int n) noexcept
+char my_xor(const char* p, int n)
 {
     if (!p || !n)
         return 0b0;

@@ -33,6 +33,6 @@ namespace ReferenceAlgorithms
 void mul(const double* A,
          const double* b,
          double* x,
-         int n) noexcept;
+         int n);
 
 }

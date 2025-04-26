@@ -130,7 +130,7 @@ void mul(const double* A, const double* b, double* x, int n)
 namespace ReferenceAlgorithms
 {
 
-void mul(const double* A, const double* b, double* x, int n) noexcept
+void mul(const double* A, const double* b, double* x, int n)
 {
     if (!A || !b || !x || !n)
         return;
