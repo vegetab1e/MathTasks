@@ -177,7 +177,7 @@ int main(int argc, char** argv)
         runTest1Ex(std::rand() % ARRAY_SIZE    + ARRAY_SIZE);
         runTest4Ex(std::rand() % VECTOR_LENGTH + VECTOR_LENGTH);
 #ifdef DIAGNOSTIC_MODE
-        std::cout << "\x1b[36mOperation number: \x1b[1m"
+        std::cout << "\x1b[35mOperation number: \x1b[1m"
                   << i + 1
                   << "\x1b[0m\n";
 #endif
