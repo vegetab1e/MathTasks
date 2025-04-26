@@ -202,7 +202,7 @@ char my_xor(const char* p, int n, bool force_sse2)
 #endif
 
     char const* end = p + n;
-    char byte = ((n >= 2 * sizeof(__m256i)) && not force_sse2
+    char byte = ((n >= 2 * sizeof(__m256i)) and not force_sse2
                   ? vXor<__m256i>(p, n)
                   : (n >= 2 * sizeof(__m128i)
                      ? vXor<__m128i>(p, n)
