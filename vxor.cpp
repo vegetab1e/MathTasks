@@ -109,7 +109,7 @@ inline __attribute__((always_inline))
 __forceinline
 #endif
 std::uint8_t
-vXor16(__m128i const* p, int n) noexcept
+vXor(__m128i const* p, int n) noexcept
 {
     alignas(__m128i) std::uint8_t buffer[sizeof(__m128i)];
     if ((reinterpret_cast<std::uintptr_t>(p) & 0xF) == 0)
@@ -130,7 +130,7 @@ inline __attribute__((always_inline))
 __forceinline
 #endif
 std::uint8_t
-vXor32(__m256i const* p, int n) noexcept
+vXor(__m256i const* p, int n) noexcept
 {
     alignas(__m256i) std::uint8_t buffer[sizeof(__m256i)];
     if ((reinterpret_cast<std::uintptr_t>(p) & 0x1F) == 0)
@@ -147,6 +147,35 @@ vXor32(__m256i const* p, int n) noexcept
     return *buffer ^ *(buffer + 1);
 }
 
+template<class T>
+auto
+vXor(const char* &p, int n)
+{
+    char byte = 0b0;
+    const int chunk = (n /= sizeof(T)) / NUM_THREADS;
+#pragma omp parallel if (chunk > 1) num_threads(NUM_THREADS) reduction(^:byte)
+    if (omp_in_parallel())
+    {
+#if defined(DIAGNOSTIC_MODE) && !defined(BENCHMARK_MODE)
+#pragma omp single
+        std::cout << "\x1b[36mNumber of threads: \x1b[1m"
+                  << omp_get_num_threads()
+                  << "\x1b[0m\n";
+#endif
+        byte = vXor(reinterpret_cast<const T*>(p) + chunk * omp_get_thread_num(), chunk);
+#pragma omp barrier
+#pragma omp atomic update
+        p += chunk * sizeof(T);
+    }
+    else
+    {
+        byte = vXor(reinterpret_cast<const T*>(p), n);
+        p += n * sizeof(T);
+    }
+
+    return byte;
+}
+
 }
 
 inline namespace OptimizedAlgorithms
@@ -157,9 +186,6 @@ char my_xor(const char* p, int n) noexcept
     if (!p || !n)
         return 0b0;
 
-    char const* end = p + n;
-    char byte = 0b0;
-
     omp_set_dynamic(0);
     omp_set_num_threads(NUM_THREADS);
 
@@ -169,41 +195,19 @@ char my_xor(const char* p, int n) noexcept
     tsc = __rdtscp(&aux);
 #endif
 
-    if (n >= 2 * sizeof(__m256i))
-    {
-        const int chunk = (n /= sizeof(__m256i)) / NUM_THREADS;
-#pragma omp parallel if (chunk > 1) num_threads(NUM_THREADS) reduction(^:byte)
-        if (omp_in_parallel())
-        {
-#if defined(DIAGNOSTIC_MODE) && !defined(BENCHMARK_MODE)
-#pragma omp single
-            std::cout << "\x1b[36mNumber of threads: \x1b[1m"
-                      << omp_get_num_threads()
-                      << "\x1b[0m\n";
-#endif
-            byte = vXor32(reinterpret_cast<__m256i const*>(p) + chunk * omp_get_thread_num(), chunk);
-#pragma omp barrier
-#pragma omp atomic update
-            p += chunk * sizeof(__m256i);
-        }
-        else
-        {
-            byte = vXor32(reinterpret_cast<__m256i const*>(p), n);
-            p += n * sizeof(__m256i);
-        }
-    }
-    else if (n >= 2 * sizeof(__m128i))
-    {
-        byte = vXor16(reinterpret_cast<__m128i const*>(p), n /= sizeof(__m128i));
-        p += n * sizeof(__m128i);
-    }
+    char const* end = p + n;
+    char byte = (n >= 2 * sizeof(__m256i)
+                 ? vXor<__m256i>(p, n)
+                 : (n >= 2 * sizeof(__m128i)
+                    ? vXor<__m128i>(p, n)
+                    : *p++));
 
     while (p < end)
         byte ^= *p++;
 
 #ifdef BENCHMARK_MODE
     tsc = __rdtscp(&aux) - tsc;
-    std::cout << "\x1b[4mПриблизительное\x1b[0m количество тактов на "
+    std::cout << "\x1b[4mПриблизительное\x1b[0m количество циклов на "
                  "\x1b[1mXOR с векторизацией:  \x1b[32m"
               << tsc << "\x1b[0m\n";
 #endif
@@ -221,8 +225,6 @@ char my_xor(const char* p, int n) noexcept
     if (!p || !n)
         return 0b0;
 
-    char byte = 0b0;
-
     omp_set_dynamic(0);
     omp_set_num_threads(NUM_THREADS);
 
@@ -232,13 +234,14 @@ char my_xor(const char* p, int n) noexcept
     tsc = __rdtscp(&aux);
 #endif
 
+    char byte = 0b0;
 #pragma omp parallel for num_threads(NUM_THREADS) reduction(^:byte)
     for (int i = 0; i < n; ++i)
         byte ^= p[i];
 
 #ifdef BENCHMARK_MODE
     tsc = __rdtscp(&aux) - tsc;
-    std::cout << "\x1b[4mПриблизительное\x1b[0m количество тактов на "
+    std::cout << "\x1b[4mПриблизительное\x1b[0m количество циклов на "
                  "\x1b[1mXOR без векторизации: \x1b[32m"
               << tsc << "\x1b[0m\n";
 #endif
