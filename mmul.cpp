@@ -17,7 +17,7 @@ namespace
 {
 
 constexpr std::size_t CHUNK_SIZE = sizeof(__m256d) / sizeof(double);
-constexpr int NUM_THREADS = 8;
+const int NUM_THREADS = omp_get_num_procs();
 #ifdef DIAGNOSTIC_MODE
 unsigned threads = 0;
 #endif

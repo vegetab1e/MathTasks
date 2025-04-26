@@ -11,7 +11,7 @@
 namespace
 {
 
-constexpr int NUM_THREADS = 8;
+const int NUM_THREADS = omp_get_num_procs();
 
 inline void
 vXor16A(__m128i* buffer,
