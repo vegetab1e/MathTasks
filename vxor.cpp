@@ -140,13 +140,15 @@ char my_xor(const char* p, int n) noexcept
                       << "\x1b[0m\n";
 #endif
             byte = vXor32(reinterpret_cast<__m256i const*>(p) + chunk * omp_get_thread_num(), chunk);
+#pragma omp barrier
+#pragma omp atomic update
+            p += chunk * sizeof(__m256i);
         }
         else
         {
             byte = vXor32(reinterpret_cast<__m256i const*>(p), n);
+            p += n * sizeof(__m256i);
         }
-
-        p += (chunk ? chunk * NUM_THREADS : n) * sizeof(__m256i);
     }
     else if (n >= 2 * sizeof(__m128i))
     {
