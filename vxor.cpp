@@ -1,5 +1,7 @@
 ﻿#include <cstdint>
-
+#ifdef DIAGNOSTIC_MODE
+#include <iostream>
+#endif
 #include <omp.h>
 #include <immintrin.h>
 #include <emmintrin.h>
@@ -13,7 +15,7 @@ constexpr int NUM_THREADS = 8;
 
 inline void
 vXor16A(__m128i* buffer,
-      __m128i const* &p,
+      __m128i const* p,
       __m128i const* end) noexcept
 {
     __m128i vector = _mm_load_si128(p++);
@@ -29,7 +31,7 @@ vXor16A(__m128i* buffer,
 
 inline void
 vXor16U(__m128i* buffer,
-      __m128i const* &p,
+      __m128i const* p,
       __m128i const* end) noexcept
 {
     __m128i vector = _mm_loadu_si128(p++);
@@ -45,7 +47,7 @@ vXor16U(__m128i* buffer,
 
 inline void
 vXor32A(__m256i* buffer,
-        __m256i const* &p,
+        __m256i const* p,
         __m256i const* end) noexcept
 {
     __m256i vector = _mm256_load_si256(p++);
@@ -61,7 +63,7 @@ vXor32A(__m256i* buffer,
 
 inline void
 vXor32U(__m256i* buffer,
-        __m256i const* &p,
+        __m256i const* p,
         __m256i const* end) noexcept
 {
     __m256i vector = _mm256_loadu_si256(p++);
@@ -76,7 +78,7 @@ vXor32U(__m256i* buffer,
 }
 
 inline std::uint8_t
-vXor16(__m128i const* &p, int n) noexcept
+vXor16(__m128i const* p, int n) noexcept
 {
     alignas(__m128i) std::uint8_t buffer[sizeof(__m128i)];
     if ((reinterpret_cast<std::uintptr_t>(p) & 0xF) == 0)
@@ -92,7 +94,7 @@ vXor16(__m128i const* &p, int n) noexcept
 }
 
 inline std::uint8_t
-vXor32(__m256i const* &p, int n) noexcept
+vXor32(__m256i const* p, int n) noexcept
 {
     alignas(__m256i) std::uint8_t buffer[sizeof(__m256i)];
     if ((reinterpret_cast<std::uintptr_t>(p) & 0x1F) == 0)
@@ -120,11 +122,37 @@ char my_xor(const char* p, int n) noexcept
         return 0b0;
 
     char const* end = p + n;
-    char byte = (n >= 2 * sizeof(__m256i))
-                ? vXor32(reinterpret_cast<__m256i const* &>(p), n / sizeof(__m256i))
-                : ((n >= 2 * sizeof(__m128i))
-                   ? vXor16(reinterpret_cast<__m128i const* &>(p), n / sizeof(__m128i))
-                   : *p++);
+    char byte = 0b0;
+
+    omp_set_dynamic(0);
+    omp_set_num_threads(NUM_THREADS);
+
+    if (n >= 2 * sizeof(__m256i))
+    {
+        const int chunk = (n /= sizeof(__m256i)) / NUM_THREADS;
+#pragma omp parallel if (chunk > 1) num_threads(NUM_THREADS) reduction(^:byte)
+        if (omp_in_parallel())
+        {
+#ifdef DIAGNOSTIC_MODE
+#pragma omp single
+            std::cout << "\x1b[36mNumber of threads: \x1b[1m"
+                      << omp_get_num_threads()
+                      << "\x1b[0m\n";
+#endif
+            byte = vXor32(reinterpret_cast<__m256i const*>(p) + chunk * omp_get_thread_num(), chunk);
+        }
+        else
+        {
+            byte = vXor32(reinterpret_cast<__m256i const*>(p), n);
+        }
+
+        p += (chunk ? chunk * NUM_THREADS : n) * sizeof(__m256i);
+    }
+    else if (n >= 2 * sizeof(__m128i))
+    {
+        byte = vXor16(reinterpret_cast<__m128i const*>(p), n /= sizeof(__m128i));
+        p += n * sizeof(__m128i);
+    }
 
     while (p < end)
         byte ^= *p++;
