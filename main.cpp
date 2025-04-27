@@ -17,7 +17,7 @@
 namespace
 {
 
-constexpr double TOLERANCE = 0.0001;
+constexpr double TOLERANCE = 0.00001;
 
 constexpr std::size_t OPERATION_COUNT = 100U;
 constexpr std::size_t VECTOR_LENGTH = 1'000U;

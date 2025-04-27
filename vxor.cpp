@@ -1,26 +1,28 @@
 ﻿#include <cstdint>
-#ifdef DIAGNOSTIC_MODE
-#include <iostream>
-#endif
+
 #include <omp.h>
 #include <immintrin.h>
 #include <emmintrin.h>
 
-#include "vxor.h"
-#ifdef BENCHMARK_MODE
+#if defined(DIAGNOSTIC_MODE) || defined(BENCHMARK_MODE)
+#include <iostream>
 #include "utils.h"
 #endif
 
+#include "vxor.h"
+
 namespace
 {
+
 #ifdef BENCHMARK_MODE
 const int NUM_THREADS = 1;
 #else
 const int NUM_THREADS = omp_get_num_procs();
 #endif
 
+inline
 #ifdef __GNUC__
-inline __attribute__((always_inline))
+__attribute__((always_inline))
 #else
 __forceinline
 #endif
@@ -40,8 +42,9 @@ vXor16A(__m128i* buffer,
     _mm_store_si128(buffer, vector);
 }
 
+inline
 #ifdef __GNUC__
-inline __attribute__((always_inline))
+__attribute__((always_inline))
 #else
 __forceinline
 #endif
@@ -61,8 +64,9 @@ vXor16U(__m128i* buffer,
     _mm_store_si128(buffer, vector);
 }
 
+inline
 #ifdef __GNUC__
-inline __attribute__((always_inline))
+__attribute__((always_inline))
 #else
 __forceinline
 #endif
@@ -82,8 +86,9 @@ vXor32A(__m256i* buffer,
     _mm256_store_si256(buffer, vector);
 }
 
+inline
 #ifdef __GNUC__
-inline __attribute__((always_inline))
+__attribute__((always_inline))
 #else
 __forceinline
 #endif
@@ -106,8 +111,9 @@ vXor32U(__m256i* buffer,
 //
 // SSE2
 //
+inline
 #ifdef __GNUC__
-inline __attribute__((always_inline))
+__attribute__((always_inline))
 #else
 __forceinline
 #endif
@@ -130,8 +136,9 @@ vXor(__m128i const* p, int n) noexcept
 //
 // AVX2
 //
+inline
 #ifdef __GNUC__
-inline __attribute__((always_inline))
+__attribute__((always_inline))
 #else
 __forceinline
 #endif

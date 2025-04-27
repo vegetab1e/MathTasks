@@ -17,13 +17,24 @@ namespace
 {
 
 constexpr std::size_t CHUNK_SIZE = sizeof(__m256d) / sizeof(double);
-const int NUM_THREADS = omp_get_num_procs();
 
 #if defined(DIAGNOSTIC_MODE) && !defined(BENCHMARK_MODE)
 unsigned threads_map;
 #endif
 
-inline void
+#ifdef BENCHMARK_MODE
+const int NUM_THREADS = 1;
+#else
+const int NUM_THREADS = omp_get_num_procs();
+#endif
+
+inline
+#ifdef __GNUC__
+__attribute__((always_inline))
+#else
+__forceinline
+#endif
+void
 rcMulA(const double* row, const double* end, const double* col, double* x)
 {
 #if defined(DIAGNOSTIC_MODE) && !defined(BENCHMARK_MODE)
@@ -54,7 +65,13 @@ rcMulA(const double* row, const double* end, const double* col, double* x)
         *x += *row++ * *col++;
 }
 
-inline void
+inline
+#ifdef __GNUC__
+__attribute__((always_inline))
+#else
+__forceinline
+#endif
+void
 rcMulU(const double* row, const double* end, const double* col, double* x)
 {
 #if defined(DIAGNOSTIC_MODE) && !defined(BENCHMARK_MODE)
