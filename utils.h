@@ -10,16 +10,26 @@
 
 #include <iostream>
 #include <iomanip>
+
 #include <string>
 
 #if defined(_MSC_VER)
+
 #include <intrin.h>
+
 #define CHAR_SIZE CHAR_BIT 
+
 #elif defined(__GNUC__)
+
+#include <sys/resource.h>
+#include <sys/time.h>
+
 #include <cpuid.h>
 #include <cxxabi.h>
 #include <x86intrin.h>
+
 #define CHAR_SIZE __CHAR_BIT__
+
 #else
 #error Failing compilation
 #endif
@@ -66,7 +76,7 @@ fillByteArrayEx(T* bytes, std::size_t N)
     std::srand(static_cast<unsigned>(__rdtsc()));
 
     for (std::size_t i = 0; i < N; ++i)
-        bytes[i] = std::rand() % (std::numeric_limits<T>::max() + 1);
+        bytes[i] = std::rand() % (std::numeric_limits<T>::max() + 1U);
 }
 
 template<std::size_t N, class T>
@@ -86,7 +96,7 @@ fillVector(T* vector, std::size_t N)
     std::srand(static_cast<unsigned>(__rdtsc()));
 
     for (std::size_t i = 0; i < N; ++i)
-        vector[i] = (std::rand() % 100 + 1) * 2.718281828459045;
+        vector[i] = (std::rand() % 100 + 1) / 1E+5;
 }
 
 template<std::size_t N, class T>
@@ -176,13 +186,36 @@ printPolynom(const T* coefficients, std::size_t degree, T x, T value)
                       ? ("x^" + std::to_string(i)).c_str()
                       : "");
     
-    std::cout << "\x1b[0m при \x1b[1mx = " << x
+    std::cout << "\x1b[0m в точке \x1b[1m" << x
               << "\x1b[0m равно \x1b[1m" << value
               << "\x1b[0m\n";
 }
 
-inline
-bool checkRdtscp()
+inline void printPerfInfo(
+    uint64_t (&tsc)[2],
+#ifdef __GNUC__
+    rusage (&usage)[2],
+#endif
+    const char* op_name)
+{
+    std::cout << "\x1b[4mКоличество тактов\x1b[0m на "
+              << "\x1b[1m" + std::string(op_name) + ":\t\x1b[32m"
+              << tsc[1] - tsc[0] << "\x1b[0m\n";
+#ifdef __GNUC__
+    timeval tsv[3]{};
+    timersub(&usage[1].ru_utime, &usage[0].ru_utime, &tsv[0]);
+    timersub(&usage[1].ru_stime, &usage[0].ru_stime, &tsv[1]);
+    timeradd(&tsv[0], &tsv[1], &tsv[2]);
+
+    std::cout << "\x1b[4mВремя затраченное\x1b[0m на "
+                 "\x1b[1m" + std::string(op_name) + ":\t\x1b[32m"
+              << (tsv[2].tv_sec  ? std::to_string(tsv[2].tv_sec)  + " с "  : "")
+              << (tsv[2].tv_usec ? std::to_string(tsv[2].tv_usec) + " мкс" : "")
+              << "\x1b[0m\n";
+#endif
+}
+
+inline bool checkRdtscp() noexcept
 {
 #if defined (__GNUC__)
     unsigned cpu_id[4];
@@ -197,14 +230,7 @@ bool checkRdtscp()
 #else
 #error Failing compilation
 #endif
-    if (cpu_id[3] & (1 << 27))
-    {
-        std::cout << "\x1b[1;33mRDTSCP is supported\x1b[0m\n";
-        return true;
-    }
-
-    std::cout << "\x1b[1;31mRDTSCP is not supported\x1b[0m\n";
-    return false;
+    return (cpu_id[3] & (1 << 27));
 }
 
 #undef CHAR_SIZE

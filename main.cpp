@@ -1,27 +1,47 @@
-﻿#include <cstddef>
-#include <cstdlib>
+﻿#include <cstdlib>
+#include <clocale>
+
 #include <cstdint>
 #include <cfloat>
-#include <cmath>
-
-#include <clocale>
 
 #include <iostream>
 
+#include <omp.h>
+
 #include "utils.h"
 #include "vxor.h"
-#include "peval.h"
 #include "mmul.h"
+#include "peval.h"
 #include "rational.h"
+
+#ifdef BENCHMARK_MODE
+extern const int NUM_THREADS = 1;
+#else
+extern const int NUM_THREADS = omp_get_num_procs();
+#endif
 
 namespace
 {
 
-constexpr double TOLERANCE = 0.00001;
-
-constexpr std::size_t OPERATION_COUNT = 100U;
-constexpr std::size_t VECTOR_LENGTH = 1'000U;
-constexpr std::size_t ARRAY_SIZE = 10'000'000U;
+// Десяти итераций более чем достаточно для
+// оценки эффективности реализаций, так как
+// объёмы используемых данных очень большие
+constexpr std::size_t OPERATION_COUNT = 10U;
+// ЭТО МИНИМАЛЬНОЕ ЗНАЧЕНИЕ, МАКСИМАЛЬНОЕ
+// БУДЕТ В ДВА РАЗА БОЛЬШЕ МИНУС ЕДИНИЦА!
+// (12 800 ^ 2 * 8) / (1024 ^ 2) = 1 250 мегабайт
+// на квадратную матрицу из 64-битных даблов и по
+// (12 800 * 8) / (1024 ^ 2) = 100 килобайт на
+// три вектора-столбца из 64-битных даблов для
+// умножения на эту матрицу одного из них двумя
+// способами и сравнения полученных двух других
+constexpr std::size_t VECTOR_LENGTH = 12'800U;
+// ЭТО МИНИМАЛЬНОЕ ЗНАЧЕНИЕ, МАКСИМАЛЬНОЕ
+// БУДЕТ В ДВА РАЗА БОЛЬШЕ МИНУС ЕДИНИЦА!
+// 1 гигабайт на массив для сворачивания XORом
+// двумя способами и сравнения полученной пары
+// байт
+constexpr std::size_t ARRAY_SIZE = 1'073'741'824U;
 
 void runTest1()
 {
@@ -49,6 +69,9 @@ void runTest1()
 
 void runTest1Ex(std::size_t array_size)
 {
+    std::cout << "Размер массива байт для сворачивания XORом:\t\x1b[1m"
+              << array_size / 1'048'576. << " МБ\x1b[0m\n";
+
     std::uint8_t* bytes = static_cast<std::uint8_t*>(_mm_malloc(array_size, 32U));
 
     fillByteArrayEx(bytes, array_size);
@@ -68,9 +91,7 @@ void runTest1Ex(std::size_t array_size)
     }
     else
     {
-        std::cout << "Размер массива для побайтового XORа: \x1b[1m"
-                  << array_size
-                  << "\x1b[0m. Выполнено без ошибок\n";
+        std::cout << "Выполнено без ошибок\n";
     }
 
     _mm_free(bytes);
@@ -116,6 +137,9 @@ catch (const std::exception& e)
 
 void runTest4Ex(std::size_t vector_length)
 {
+    std::cout << "Размер матрицы и вектора для перемножения:\t\x1b[1m"
+              << vector_length << "\x1b[0m\n";
+
     const std::size_t byte_count = vector_length * sizeof(double);
     double* A  = static_cast<double*>(_mm_malloc(byte_count * vector_length, 32U));
     double* b  = static_cast<double*>(_mm_malloc(byte_count, 32U));
@@ -125,7 +149,7 @@ void runTest4Ex(std::size_t vector_length)
     if (!A || !b || !x0 || !x1)
     {
         std::cerr << "\x1b[1;31mОшибка выделения памяти!\x1b[0m\n";
-        return;
+        std::exit(EXIT_FAILURE);
     }
 
     fillVector(A, vector_length * vector_length);
@@ -137,7 +161,7 @@ void runTest4Ex(std::size_t vector_length)
 
     std::size_t error_count = 0;
     for (std::size_t i = 0; i < vector_length; ++i)
-        if (std::fabs(x0[i] - x1[i]) >= TOLERANCE)
+        if (std::fabs(x0[i] - x1[i]) >= DBL_EPSILON)
             ++error_count;
     
     if (error_count)
@@ -151,9 +175,7 @@ void runTest4Ex(std::size_t vector_length)
     }
     else
     {
-        std::cout << "Размер квадратной матрицы и вектора-столбца для умножения: \x1b[1m"
-                  << vector_length
-                  << "\x1b[0m. Выполнено без ошибок\n";
+        std::cout << "Выполнено без ошибок\n";
     }
 
     _mm_free(A);
@@ -168,23 +190,29 @@ int main(int argc, char** argv)
 {
     std::setlocale(LC_ALL, "");
 
+#ifdef BENCHMARK_MODE
+    if (checkRdtscp())
+        std::cout << "\x1b[1;33mRDTSCP is supported\x1b[0m\n";
+    else
+        std::cout << "\x1b[1;31mRDTSCP is not supported\x1b[0m\n";
+#endif
+
+    omp_set_dynamic(0);
+    omp_set_num_threads(NUM_THREADS);
+
     runTest2();
     runTest3();
-
-#ifdef BENCHMARK_MODE
-    checkRdtscp();
-#endif
 
     std::srand(static_cast<unsigned>(__rdtsc()));
     for (std::size_t i = 0; i < OPERATION_COUNT; ++i)
     {
-        runTest1Ex(std::rand() % ARRAY_SIZE    + ARRAY_SIZE);
-        runTest4Ex(std::rand() % VECTOR_LENGTH + VECTOR_LENGTH);
 #ifdef DIAGNOSTIC_MODE
-        std::cout << "\x1b[35mOperation number: \x1b[1m"
+        std::cout << "\x1b[1;34mOperation number: "
                   << i + 1
                   << "\x1b[0m\n";
 #endif
+        runTest1Ex(std::rand() % ARRAY_SIZE    + ARRAY_SIZE);
+        runTest4Ex(std::rand() % VECTOR_LENGTH + VECTOR_LENGTH);
     }
 
     return 0;

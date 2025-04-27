@@ -1,12 +1,12 @@
 ﻿#include <cstdint>
 
 #include <omp.h>
+
 #include <immintrin.h>
 #include <emmintrin.h>
 
 #if defined(BENCHMARK_MODE) && defined(__GNUC__)
 #include <sys/resource.h>
-#include <sys/time.h>
 #endif
 
 #if defined(DIAGNOSTIC_MODE) || defined(BENCHMARK_MODE)
@@ -16,13 +16,19 @@
 
 #include "vxor.h"
 
+#define XOR_PAIR(p) (*(p) ^= *((p) + 1))
+
+extern const int NUM_THREADS;
+
 namespace
 {
 
 #ifdef BENCHMARK_MODE
-const int NUM_THREADS = 1;
-#else
-const int NUM_THREADS = omp_get_num_procs();
+#ifdef __GNUC__
+rusage usage[2];
+#endif
+unsigned aux;
+uint64_t tsc[2];
 #endif
 
 inline
@@ -131,9 +137,9 @@ vXor(__m128i const* p, int n) noexcept
     else
         vXor16U(reinterpret_cast<__m128i*>(buffer), p, p + n);
 
-    *reinterpret_cast<std::uint64_t*>(buffer) ^= *(reinterpret_cast<std::uint64_t*>(buffer) + 1);
-    *reinterpret_cast<std::uint32_t*>(buffer) ^= *(reinterpret_cast<std::uint32_t*>(buffer) + 1);
-    *reinterpret_cast<std::uint16_t*>(buffer) ^= *(reinterpret_cast<std::uint16_t*>(buffer) + 1);
+    XOR_PAIR(reinterpret_cast<std::uint64_t*>(buffer));
+    XOR_PAIR(reinterpret_cast<std::uint32_t*>(buffer));
+    XOR_PAIR(reinterpret_cast<std::uint16_t*>(buffer));
 
     return *buffer ^ *(buffer + 1);
 }
@@ -156,40 +162,53 @@ vXor(__m256i const* p, int n) noexcept
     else
         vXor32U(reinterpret_cast<__m256i*>(buffer), p, p + n);
 
-    *reinterpret_cast<std::uint64_t*>(buffer) ^= *(reinterpret_cast<std::uint64_t*>(buffer) + 1) ^
-                                                 *(reinterpret_cast<std::uint64_t*>(buffer) + 2) ^
-                                                 *(reinterpret_cast<std::uint64_t*>(buffer) + 3);
-    *reinterpret_cast<std::uint32_t*>(buffer) ^= *(reinterpret_cast<std::uint32_t*>(buffer) + 1);
-    *reinterpret_cast<std::uint16_t*>(buffer) ^= *(reinterpret_cast<std::uint16_t*>(buffer) + 1);
+    _mm_store_si128(reinterpret_cast<__m128i*>(buffer),
+                    _mm_xor_si128(_mm_load_si128(reinterpret_cast<const __m128i*>(buffer)),
+                                  _mm_load_si128(reinterpret_cast<const __m128i*>(buffer) + 1)));
+
+    XOR_PAIR(reinterpret_cast<std::uint64_t*>(buffer));
+    XOR_PAIR(reinterpret_cast<std::uint32_t*>(buffer));
+    XOR_PAIR(reinterpret_cast<std::uint16_t*>(buffer));
 
     return *buffer ^ *(buffer + 1);
 }
 
 template<class T>
-auto
-vXor(const char* &p, int n)
+inline
+#ifdef __GNUC__
+__attribute__((always_inline))
+#else
+__forceinline
+#endif
+char
+vXor(const char* &p, int &n)
 {
+    char const* end = p + n;
     char byte = 0b0;
-    const int chunk = (n /= sizeof(T)) / NUM_THREADS;
-#pragma omp parallel if (chunk > 1) num_threads(NUM_THREADS) reduction(^:byte)
+
+    const int chunk_size = (n /= sizeof(T)) / NUM_THREADS;
+#pragma omp parallel if (chunk_size > 1) num_threads(NUM_THREADS) reduction(^:byte)
     if (omp_in_parallel())
     {
 #if defined(DIAGNOSTIC_MODE) && !defined(BENCHMARK_MODE)
 #pragma omp single
-        std::cout << "\x1b[36mNumber of threads: \x1b[1m"
+        std::cout << "\x1b[1;36mNumber of threads: "
                   << omp_get_num_threads()
                   << "\x1b[0m\n";
 #endif
-        byte = vXor(reinterpret_cast<const T*>(p) + chunk * omp_get_thread_num(), chunk);
+        byte = vXor(reinterpret_cast<const T*>(p) + chunk_size * omp_get_thread_num(),
+                    chunk_size);
 #pragma omp barrier
 #pragma omp atomic update
-        p += chunk * sizeof(T);
+        p += chunk_size * sizeof(T);
     }
     else
     {
         byte = vXor(reinterpret_cast<const T*>(p), n);
         p += n * sizeof(T);
     }
+
+    n = static_cast<int>(end - p);
 
     return byte;
 }
@@ -204,44 +223,38 @@ char my_xor(const char* p, int n, bool force_sse2)
     if (!p || !n)
         return 0b0;
 
-    omp_set_dynamic(0);
-    omp_set_num_threads(NUM_THREADS);
-
 #ifdef BENCHMARK_MODE
 #ifdef __GNUC__
-    rusage usage[2];
     getrusage(RUSAGE_SELF, &usage[0]);
 #endif
-    unsigned aux;
-    uint64_t tsc = __rdtscp(&aux);
+    tsc[0] = __rdtscp(&aux);
 #endif
 
     char const* end = p + n;
-    char byte = ((n >= 2 * sizeof(__m256i)) and not force_sse2
-                  ? vXor<__m256i>(p, n)
-                  : (n >= 2 * sizeof(__m128i)
-                     ? vXor<__m128i>(p, n)
-                     : *p++));
+    char byte = 0b0;
+    
+    if ((n >= 2 * sizeof(__m256i)) and not force_sse2)
+        byte = vXor<__m256i>(p, n);
+    else if (n >= 2 * sizeof(__m128i))
+        byte = vXor<__m128i>(p, n);
+    else
+        byte = *p++;
 
     while (p < end)
         byte ^= *p++;
 
 #ifdef BENCHMARK_MODE
-    tsc = __rdtscp(&aux) - tsc;
+    tsc[1] = __rdtscp(&aux);
 #ifdef __GNUC__
     getrusage(RUSAGE_SELF, &usage[1]);
-    
-    timeval time;
-    timersub(&usage[1].ru_utime, &usage[0].ru_utime, &time);
+#endif
 
-    std::cout << "\x1b[4mПриблизительное\x1b[0m время (микросекунд) на "
-                 "\x1b[1mXOR с векторизацией:  \x1b[32m"
-              << time.tv_usec << "\x1b[0m\n";
-#endif
-    std::cout << "\x1b[4mПриблизительное\x1b[0m количество циклов на "
-                 "\x1b[1mXOR с векторизацией:  \x1b[32m"
-              << tsc << "\x1b[0m\n";
-#endif
+    printPerfInfo(tsc, 
+#ifdef __GNUC__
+                  usage,
+#endif // __GNUC__
+                  "XOR с векторизацией");
+#endif // BENCHMARK_MODE
 
     return byte;
 }
@@ -256,16 +269,11 @@ char my_xor(const char* p, int n)
     if (!p || !n)
         return 0b0;
 
-    omp_set_dynamic(0);
-    omp_set_num_threads(NUM_THREADS);
-
 #ifdef BENCHMARK_MODE
 #ifdef __GNUC__
-    rusage usage[2];
     getrusage(RUSAGE_SELF, &usage[0]);
 #endif
-    unsigned aux;
-    uint64_t tsc = __rdtscp(&aux);
+    tsc[0] = __rdtscp(&aux);
 #endif
 
     char byte = 0b0;
@@ -274,23 +282,21 @@ char my_xor(const char* p, int n)
         byte ^= p[i];
 
 #ifdef BENCHMARK_MODE
-    tsc = __rdtscp(&aux) - tsc;
+    tsc[1] = __rdtscp(&aux);
 #ifdef __GNUC__
     getrusage(RUSAGE_SELF, &usage[1]);
-    
-    timeval time;
-    timersub(&usage[1].ru_utime, &usage[0].ru_utime, &time);
+#endif
 
-    std::cout << "\x1b[4mПриблизительное\x1b[0m время (микросекунд) на "
-                 "\x1b[1mXOR без векторизации: \x1b[32m"
-              << time.tv_usec << "\x1b[0m\n";
-#endif
-    std::cout << "\x1b[4mПриблизительное\x1b[0m количество циклов на "
-                 "\x1b[1mXOR без векторизации: \x1b[32m"
-              << tsc << "\x1b[0m\n";
-#endif
+    printPerfInfo(tsc, 
+#ifdef __GNUC__
+                  usage,
+#endif // __GNUC__
+                  "XOR без векторизации");
+#endif // BENCHMARK_MODE
 
     return byte;
 }
 
 }
+
+#undef XOR_PAIR

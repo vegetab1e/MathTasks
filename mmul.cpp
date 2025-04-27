@@ -4,7 +4,12 @@
 #include <limits>
 
 #include <omp.h>
+
 #include <immintrin.h>
+
+#if defined(BENCHMARK_MODE) && defined(__GNUC__)
+#include <sys/resource.h>
+#endif
 
 #if defined(DIAGNOSTIC_MODE) || defined(BENCHMARK_MODE)
 #include <iostream>
@@ -12,6 +17,8 @@
 #endif
 
 #include "mmul.h"
+
+extern const int NUM_THREADS;
 
 namespace
 {
@@ -23,9 +30,11 @@ unsigned threads_map;
 #endif
 
 #ifdef BENCHMARK_MODE
-const int NUM_THREADS = 1;
-#else
-const int NUM_THREADS = omp_get_num_procs();
+#ifdef __GNUC__
+rusage usage[2];
+#endif
+unsigned aux;
+uint64_t tsc[2];
 #endif
 
 inline
@@ -35,7 +44,7 @@ __attribute__((always_inline))
 __forceinline
 #endif
 void
-rcMulA(const double* row, const double* end, const double* col, double* x)
+rcMulA(const double* row, const double* end, const double* col, double* x) noexcept
 {
 #if defined(DIAGNOSTIC_MODE) && !defined(BENCHMARK_MODE)
 #pragma omp atomic update
@@ -72,7 +81,7 @@ __attribute__((always_inline))
 __forceinline
 #endif
 void
-rcMulU(const double* row, const double* end, const double* col, double* x)
+rcMulU(const double* row, const double* end, const double* col, double* x) noexcept
 {
 #if defined(DIAGNOSTIC_MODE) && !defined(BENCHMARK_MODE)
 #pragma omp atomic update
@@ -115,9 +124,6 @@ void mul(const double* A, const double* b, double* x, int n)
     if (!A || !b || !x || !n)
         return;
 
-    omp_set_dynamic(0);
-    omp_set_num_threads(NUM_THREADS);
-
     std::memset(x, 0, n * sizeof(*x));
 
 #if defined(DIAGNOSTIC_MODE) && !defined(BENCHMARK_MODE)
@@ -126,9 +132,10 @@ void mul(const double* A, const double* b, double* x, int n)
 #endif
 
 #ifdef BENCHMARK_MODE
-    uint64_t tsc;
-    unsigned aux;
-    tsc = __rdtscp(&aux);
+#ifdef __GNUC__
+    getrusage(RUSAGE_SELF, &usage[0]);
+#endif
+    tsc[0] = __rdtscp(&aux);
 #endif
 
     if ((reinterpret_cast<std::uintptr_t>(A) & 0b11111) == 0 &&
@@ -148,14 +155,20 @@ void mul(const double* A, const double* b, double* x, int n)
                    x + i);
 
 #ifdef BENCHMARK_MODE
-    tsc = __rdtscp(&aux) - tsc;
-    std::cout << "\x1b[4mПриблизительное\x1b[0m количество циклов на "
-                 "\x1b[1mMUL с векторизацией:  \x1b[32m"
-              << tsc << "\x1b[0m\n";
+    tsc[1] = __rdtscp(&aux);
+#ifdef __GNUC__
+    getrusage(RUSAGE_SELF, &usage[1]);
 #endif
 
+    printPerfInfo(tsc, 
+#ifdef __GNUC__
+                  usage,
+#endif // __GNUC__
+                  "MUL с векторизацией");
+#endif // BENCHMARK_MODE
+
 #if defined(DIAGNOSTIC_MODE) && !defined(BENCHMARK_MODE)
-    std::cout << "\x1b[36mNumber of threads: \x1b[1m"
+    std::cout << "\x1b[1;36mNumber of threads: "
               << trueBits(threads_map)
               << "\x1b[0m\n";
 #endif
@@ -171,13 +184,11 @@ void mul(const double* A, const double* b, double* x, int n)
     if (!A || !b || !x || !n)
         return;
 
-    omp_set_dynamic(0);
-    omp_set_num_threads(NUM_THREADS);
-
 #ifdef BENCHMARK_MODE
-    uint64_t tsc;
-    unsigned aux;
-    tsc = __rdtscp(&aux);
+#ifdef __GNUC__
+    getrusage(RUSAGE_SELF, &usage[0]);
+#endif
+    tsc[0] = __rdtscp(&aux);
 #endif
 
 #pragma omp parallel for num_threads(NUM_THREADS)
@@ -191,11 +202,17 @@ void mul(const double* A, const double* b, double* x, int n)
     }
 
 #ifdef BENCHMARK_MODE
-    tsc = __rdtscp(&aux) - tsc;
-    std::cout << "\x1b[4mПриблизительное\x1b[0m количество циклов на "
-                 "\x1b[1mMUL без векторизации: \x1b[32m"
-              << tsc << "\x1b[0m\n";
+    tsc[1] = __rdtscp(&aux);
+#ifdef __GNUC__
+    getrusage(RUSAGE_SELF, &usage[1]);
 #endif
+
+    printPerfInfo(tsc, 
+#ifdef __GNUC__
+                  usage,
+#endif // __GNUC__
+                  "MUL без векторизации");
+#endif // BENCHMARK_MODE
 }
 
 }
