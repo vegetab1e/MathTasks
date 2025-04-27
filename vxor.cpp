@@ -4,6 +4,11 @@
 #include <immintrin.h>
 #include <emmintrin.h>
 
+#if defined(BENCHMARK_MODE) && defined(__GNUC__)
+#include <sys/resource.h>
+#include <sys/time.h>
+#endif
+
 #if defined(DIAGNOSTIC_MODE) || defined(BENCHMARK_MODE)
 #include <iostream>
 #include "utils.h"
@@ -203,9 +208,12 @@ char my_xor(const char* p, int n, bool force_sse2)
     omp_set_num_threads(NUM_THREADS);
 
 #ifdef BENCHMARK_MODE
-    uint64_t tsc;
+#ifdef __GNUC__
+    rusage usage[2];
+    getrusage(RUSAGE_SELF, &usage[0]);
+#endif
     unsigned aux;
-    tsc = __rdtscp(&aux);
+    uint64_t tsc = __rdtscp(&aux);
 #endif
 
     char const* end = p + n;
@@ -220,6 +228,16 @@ char my_xor(const char* p, int n, bool force_sse2)
 
 #ifdef BENCHMARK_MODE
     tsc = __rdtscp(&aux) - tsc;
+#ifdef __GNUC__
+    getrusage(RUSAGE_SELF, &usage[1]);
+    
+    timeval time;
+    timersub(&usage[1].ru_utime, &usage[0].ru_utime, &time);
+
+    std::cout << "\x1b[4mПриблизительное\x1b[0m время (микросекунд) на "
+                 "\x1b[1mXOR с векторизацией:  \x1b[32m"
+              << time.tv_usec << "\x1b[0m\n";
+#endif
     std::cout << "\x1b[4mПриблизительное\x1b[0m количество циклов на "
                  "\x1b[1mXOR с векторизацией:  \x1b[32m"
               << tsc << "\x1b[0m\n";
@@ -242,9 +260,12 @@ char my_xor(const char* p, int n)
     omp_set_num_threads(NUM_THREADS);
 
 #ifdef BENCHMARK_MODE
-    uint64_t tsc;
+#ifdef __GNUC__
+    rusage usage[2];
+    getrusage(RUSAGE_SELF, &usage[0]);
+#endif
     unsigned aux;
-    tsc = __rdtscp(&aux);
+    uint64_t tsc = __rdtscp(&aux);
 #endif
 
     char byte = 0b0;
@@ -254,6 +275,16 @@ char my_xor(const char* p, int n)
 
 #ifdef BENCHMARK_MODE
     tsc = __rdtscp(&aux) - tsc;
+#ifdef __GNUC__
+    getrusage(RUSAGE_SELF, &usage[1]);
+    
+    timeval time;
+    timersub(&usage[1].ru_utime, &usage[0].ru_utime, &time);
+
+    std::cout << "\x1b[4mПриблизительное\x1b[0m время (микросекунд) на "
+                 "\x1b[1mXOR без векторизации: \x1b[32m"
+              << time.tv_usec << "\x1b[0m\n";
+#endif
     std::cout << "\x1b[4mПриблизительное\x1b[0m количество циклов на "
                  "\x1b[1mXOR без векторизации: \x1b[32m"
               << tsc << "\x1b[0m\n";
