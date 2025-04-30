@@ -199,6 +199,11 @@ void mul(const double* A, const double* b, double* x, int n)
         x[i] = row[0] * b[0];
         for (int j = 1; j < n; ++j)
             x[i] += row[j] * b[j];
+        // Если массив размещён в памяти
+        // не по строкам, а по столбцам,
+        // то нужно изменить перебор так
+        //  x[j] += row[j] * b[i];
+        // и начинать тогда нужно с нуля
     }
 
 #ifdef BENCHMARK_MODE

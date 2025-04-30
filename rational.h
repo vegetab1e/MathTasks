@@ -87,6 +87,11 @@ public:
 
     auto operator+(const Rational& rhs) const
     {
+        // Нужно расширить это
+        // решение сокращением
+        if (den_ == rhs.den_)
+            return Rational(num_ + rhs.num_, den_);
+
         return Rational(num_ * rhs.den_ + rhs.num_ * den_,
                         den_ * rhs.den_);
     }

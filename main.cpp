@@ -114,7 +114,7 @@ try {
     auto r1 = Rational<short>(3, -4);
     auto r2 = Rational<int>(r0);
     auto r3 = Rational<int>(r2);
-    auto r4 = Rational<int>(145638, 9540);
+    auto r4 = Rational<int>(145'638, 9'540);
     // Порождают исключения,
     // оставил для проверки!
 #if 0
@@ -129,6 +129,15 @@ try {
                  "\x1b[1m" + r0.print() + "\x1b[0m и " \
                  "\x1b[1m" + r1.print() + "\x1b[0m равна " \
                  "\x1b[1m" << r8 << "\x1b[0m\n";
+
+    // Пример с переполнением, исправить!
+    auto r10 = Rational<int>(1, 1'000'000);
+    auto r11 = Rational<int>(1, 1'000'000);
+    auto r12 = r10 + r11;
+    std::cout << "Сумма рациональных чисел " \
+                 "\x1b[1m" + r10.print() + "\x1b[0m и " \
+                 "\x1b[1m" + r11.print() + "\x1b[0m равна " \
+                 "\x1b[1m" << r12 << "\x1b[0m\n";
 }
 catch (const std::exception& e)
 {
